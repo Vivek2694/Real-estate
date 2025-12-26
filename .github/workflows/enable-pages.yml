@@ -1,0 +1,34 @@
+name: Enable GitHub Pages site
+on:
+  push:
+    branches:
+      - main
+      - gh-pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+jobs:
+  enable-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable Pages via REST API
+        env:
+          GITHUB_API: https://api.github.com
+          REPO: ${{ github.repository }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Enabling Pages for $REPO (branch: gh-pages)"
+          http_code=$(curl -s -o /tmp/pages_resp -w "%{http_code}" -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $TOKEN" \
+            $GITHUB_API/repos/$REPO/pages \
+            -d '{"source":{"branch":"gh-pages","path":"/"}}')
+          if [ "$http_code" -ge 200 -a "$http_code" -lt 300 ]; then
+            echo "Pages enabled successfully"
+            cat /tmp/pages_resp || true
+          else
+            echo "Failed to enable Pages (HTTP $http_code)" >&2
+            cat /tmp/pages_resp >&2 || true
+            exit 1
+          fi
